@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cobro QR - Autoservicio Castillo</title>
+    
+    <!-- NUEVO: Etiquetas para la PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0a0f25">
+    <link rel="apple-touch-icon" href="icono-192.png">
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         /* =========================================================
@@ -151,7 +157,7 @@
             align-items: center;
             text-align: center;
             padding: 20px;
-            cursor: pointer; /* Indica que la pantalla es interactiva */
+            cursor: pointer; 
         }
         .modal-titulo { 
             font-family: "Times New Roman", Times, serif; 
@@ -183,8 +189,6 @@
 </head>
 <body>
 
-    <!-- NUEVO: Etiqueta de audio oculta con un sonido de notificación -->
-    <!-- Puedes reemplazar el atributo src por el enlace a tu propio archivo MP3 o WAV -->
     <audio id="sonido-pago" src="https://assets.mixkit.co/active_storage/sfx/861/861-preview.mp3" preload="auto"></audio>
 
     <!-- MODAL DE PAGO RECIBIDO -->
@@ -227,7 +231,7 @@
         let qrCodeInstance = null;
         let intervaloReinicio = null;
         let tiempoRestante = 180; 
-        let timeoutCierreModal = null; // Variable para controlar el tiempo del modal
+        let timeoutCierreModal = null; 
 
         function formatearMoneda(input) {
             let valorLimpio = input.value.replace(/\D/g, "");
@@ -364,17 +368,14 @@
             let modal = document.getElementById("modal-pago");
             modal.style.display = "flex";
 
-            // Evento para cerrar al tocar la pantalla
             modal.onclick = cerrarModalYReiniciar;
 
-            // NUEVO: Reproducir el archivo de audio
             const sonido = document.getElementById('sonido-pago');
-            sonido.currentTime = 0; // Reinicia el audio si ya estaba sonando
+            sonido.currentTime = 0; 
             sonido.play().catch(error => {
                 console.log("El navegador bloqueó el autoplay del sonido:", error);
             });
 
-            // Lógica existente de síntesis de voz
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel(); 
                 const mensaje = new SpeechSynthesisUtterance(`Transferencia Exitosa Pagaron ${Math.floor(montoNum)} pesos`);
@@ -382,7 +383,6 @@
                 window.speechSynthesis.speak(mensaje);
             }
 
-            // Ocultar automáticamente a los 30 segundos si no tocan la pantalla
             if (timeoutCierreModal) clearTimeout(timeoutCierreModal);
             timeoutCierreModal = setTimeout(() => {
                 cerrarModalYReiniciar();
@@ -422,6 +422,16 @@
         revisarPagos();
         setInterval(revisarPagos, 5000);
 
+        /* ==========================================
+           NUEVO: REGISTRO DEL SERVICE WORKER (PWA)
+           ========================================== */
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js')
+                    .then(reg => console.log('Service Worker registrado con éxito', reg))
+                    .catch(err => console.error('Error al registrar Service Worker', err));
+            });
+        }
     </script>
 </body>
 </html>
