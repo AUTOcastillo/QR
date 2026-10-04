@@ -248,12 +248,16 @@
         <h2>
             <span class="large-text">INICIAR SESIÓN</span>
         </h2>
-        <div class="input-group" style="margin-top: 20px;">
-            <input type="text" id="usuario-input" placeholder="Usuario" style="font-size: 20px; margin-bottom: 15px;" onkeypress="if(event.key === 'Enter') verificarLogin()">
-            <input type="password" id="clave-input" placeholder="Contraseña" style="font-size: 20px;" onkeypress="if(event.key === 'Enter') verificarLogin()">
-        </div>
-        <p id="error-login" style="color: #f44336; font-size: 14px; display: none; margin-top: 0;">Usuario o contraseña incorrectos.</p>
-        <button class="btn-principal" onclick="verificarLogin()">Entrar</button>
+        
+        <form onsubmit="event.preventDefault(); verificarLogin();" style="width: 100%;">
+            <div class="input-group" style="margin-top: 20px;">
+                <input type="text" id="usuario-input" placeholder="Usuario" style="font-size: 20px; margin-bottom: 15px;" required>
+                <!-- inputmode="numeric" obliga a abrir el teclado grande nativo de PIN en móviles -->
+                <input type="password" id="clave-input" placeholder="Contraseña" style="font-size: 20px;" inputmode="numeric" pattern="[0-9]*" required>
+            </div>
+            <p id="error-login" style="color: #f44336; font-size: 14px; display: none; margin-top: 0;">Usuario o contraseña incorrectos.</p>
+            <button type="submit" class="btn-principal">Entrar</button>
+        </form>
     </div>
 
     <!-- =====================================
@@ -273,18 +277,20 @@
             </h2>
             <div id="label-cajero" class="info-cajero">Cajero: -</div>
             
-            <div class="input-group">
-                <label for="montoInput">Ingresa el valor a cobrar (COP)</label>
-                <input type="text" id="montoInput" inputmode="numeric" placeholder="0" oninput="formatearMoneda(this)" onkeypress="if(event.key === 'Enter') generarQR()">
-            </div>
+            <form onsubmit="event.preventDefault(); generarQR();" style="width: 100%;">
+                <div class="input-group">
+                    <label for="montoInput">Ingresa el valor a cobrar (COP)</label>
+                    <input type="text" id="montoInput" inputmode="numeric" placeholder="0" oninput="formatearMoneda(this)" required>
+                </div>
 
-            <div class="botones-rapidos">
-                <button class="btn-rapido" onclick="cobroRapido(5000)">$5.000</button>
-                <button class="btn-rapido" onclick="cobroRapido(10000)">$10.000</button>
-                <button class="btn-rapido" onclick="cobroRapido(20000)">$20.000</button>
-            </div>
+                <div class="botones-rapidos">
+                    <button type="button" class="btn-rapido" onclick="cobroRapido(5000)">$5.000</button>
+                    <button type="button" class="btn-rapido" onclick="cobroRapido(10000)">$10.000</button>
+                    <button type="button" class="btn-rapido" onclick="cobroRapido(20000)">$20.000</button>
+                </div>
 
-            <button class="btn-principal" onclick="generarQR()">Generar QR</button>
+                <button type="submit" class="btn-principal">Generar QR</button>
+            </form>
 
             <div id="qrcode"></div>
             
@@ -293,7 +299,7 @@
                 <p id="countdown-text"></p>
             </div>
             
-            <button class="btn-logout" onclick="cerrarSesion()">Cambiar de Cajero (Salir)</button>
+            <button type="button" class="btn-logout" onclick="cerrarSesion()">Cambiar de Cajero (Salir)</button>
         </div>
 
         <!-- TARJETA DE HISTORIAL (CUADRE DE CAJA) -->
@@ -322,10 +328,14 @@
         <div class="modal-box">
             <h3 style="color: var(--color-oro); margin-top: 0;">Autorización de Cierre</h3>
             <p style="font-size: 14px; color: #ccc; margin-bottom: 20px;">Ingresa la clave maestra para cerrar la caja y reiniciar los valores a cero.</p>
-            <input type="password" id="clave-cierre" placeholder="Contraseña" style="width: 100%; text-align: center;" onkeypress="if(event.key === 'Enter') ejecutarCierreCaja()">
-            <p id="error-cierre" style="color: #f44336; font-size: 14px; display: none; margin-top: 0;">Clave maestra incorrecta.</p>
-            <button class="btn-principal" onclick="ejecutarCierreCaja()">Confirmar Cierre</button>
-            <button class="btn-cancelar" onclick="cerrarModalCierre()">Cancelar</button>
+            
+            <form onsubmit="event.preventDefault(); ejecutarCierreCaja();" style="width: 100%;">
+                <input type="password" id="clave-cierre" placeholder="Contraseña" inputmode="numeric" pattern="[0-9]*" style="width: 100%; text-align: center; margin-bottom: 15px;" required>
+                <p id="error-cierre" style="color: #f44336; font-size: 14px; display: none; margin-top: 0;">Clave maestra incorrecta.</p>
+                <button type="submit" class="btn-principal">Confirmar Cierre</button>
+            </form>
+            
+            <button type="button" class="btn-cancelar" onclick="cerrarModalCierre()">Cancelar</button>
         </div>
     </div>
 
@@ -354,13 +364,24 @@
         // LÓGICA DE LOGIN Y SEGURIDAD
         // ==========================================
         function verificarLogin() {
-            // Convierte lo que el usuario escriba a minúsculas para evitar errores
-            let u = document.getElementById("usuario-input").value.trim().toLowerCase();
-            let c = document.getElementById("clave-input").value.trim();
+            // Desbloquear el motor de audio y voz en móviles con una acción silenciosa
+            const sonido = document.getElementById('sonido-pago');
+            sonido.play().then(() => sonido.pause()).catch(e => console.log("Audio desbloqueo omitido", e));
+            
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+            }
+
+            // Lectura de inputs
+            let uInput = document.getElementById("usuario-input").value;
+            let cInput = document.getElementById("clave-input").value;
+            
+            let u = uInput ? uInput.trim().toLowerCase() : "";
+            let c = cInput ? cInput.trim() : "";
+            
             let error = document.getElementById("error-login");
 
-            if (USUARIOS[u] && USUARIOS[u] === c) {
-                // Pone la primera letra en mayúscula solo para que se vea bonito en la pantalla
+            if (u && c && USUARIOS[u] && USUARIOS[u] === c) {
                 usuarioActual = u.charAt(0).toUpperCase() + u.slice(1);
                 document.getElementById("label-cajero").innerText = "Cajero: " + usuarioActual;
                 
