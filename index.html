@@ -66,11 +66,19 @@
             color: var(--color-oro);
             font-family: "Times New Roman", Times, serif; 
             margin-top: 10px;
-            margin-bottom: 25px;
+            margin-bottom: 5px; 
             line-height: 1.1;
             font-weight: normal;
         }
         h2 .large-text { display: block; font-size: 38px; letter-spacing: 1px; }
+
+        .info-cajero {
+            color: #aaa;
+            font-size: 14px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
         
         .input-group { margin-bottom: 15px; width: 100%; }
         label { display: block; font-size: 14px; margin-bottom: 10px; color: #ccc; }
@@ -192,7 +200,7 @@
         .item-pago {
             display: flex; justify-content: space-between;
             padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
-            font-size: 15px; color: #ccc;
+            font-size: 14px; color: #ccc;
         }
         .item-pago:last-child { border-bottom: none; }
         .total-dia {
@@ -205,6 +213,12 @@
             width: 100%; border-radius: 8px; cursor: pointer; transition: 0.3s;
         }
         .btn-limpiar:hover { background-color: #f44336; color: white; }
+        .btn-logout {
+            background-color: transparent; color: #888; border: 1px solid #888;
+            font-size: 12px; padding: 10px; margin-top: 20px; border-radius: 6px; cursor: pointer;
+            width: 100%; transition: 0.3s;
+        }
+        .btn-logout:hover { background-color: #333; color: white; }
 
         #pantalla-login { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 380px; }
         #pantalla-app { display: none; flex-direction: column; align-items: center; width: 100%; }
@@ -234,11 +248,11 @@
         <h2>
             <span class="large-text">INICIAR SESIÓN</span>
         </h2>
-        <div class="input-group">
+        <div class="input-group" style="margin-top: 20px;">
             <input type="text" id="usuario-input" placeholder="Usuario" style="font-size: 20px; margin-bottom: 15px;" onkeypress="if(event.key === 'Enter') verificarLogin()">
             <input type="password" id="clave-input" placeholder="Contraseña" style="font-size: 20px;" onkeypress="if(event.key === 'Enter') verificarLogin()">
         </div>
-        <p id="error-login" style="color: #f44336; font-size: 14px; display: none; margin-top: 0;">Credenciales incorrectas.</p>
+        <p id="error-login" style="color: #f44336; font-size: 14px; display: none; margin-top: 0;">Usuario o contraseña incorrectos.</p>
         <button class="btn-principal" onclick="verificarLogin()">Entrar</button>
     </div>
 
@@ -257,6 +271,7 @@
                 <span class="large-text">AUTOSERVICIO</span>
                 <span class="large-text">CASTILLO</span>
             </h2>
+            <div id="label-cajero" class="info-cajero">Cajero: -</div>
             
             <div class="input-group">
                 <label for="montoInput">Ingresa el valor a cobrar (COP)</label>
@@ -277,10 +292,13 @@
                 <p id="payload-output" style="margin: 0;">Esperando monto...</p>
                 <p id="countdown-text"></p>
             </div>
+            
+            <!-- Botón de salir visible para todos los usuarios -->
+            <button class="btn-logout" onclick="cerrarSesion()">Cambiar de Cajero (Salir)</button>
         </div>
 
-        <!-- TARJETA DE HISTORIAL (CUADRE DE CAJA) -->
-        <div class="historial-card">
+        <!-- TARJETA DE HISTORIAL (CUADRE DE CAJA) - OCULTA POR DEFECTO -->
+        <div id="panel-historial" class="historial-card" style="display: none;">
             <h3>📋 Registro del Día</h3>
             <div id="lista-historial"></div>
             <div class="total-dia">Total: <span id="total-monto">$0</span></div>
@@ -305,7 +323,7 @@
             <h3 style="color: var(--color-oro); margin-top: 0;">Autorización de Cierre</h3>
             <p style="font-size: 14px; color: #ccc; margin-bottom: 20px;">Ingresa la clave maestra para cerrar la caja y reiniciar los valores a cero.</p>
             <input type="password" id="clave-cierre" placeholder="Contraseña" style="width: 100%; text-align: center;" onkeypress="if(event.key === 'Enter') ejecutarCierreCaja()">
-            <p id="error-cierre" style="color: #f44336; font-size: 14px; display: none; margin-top: 0;">Clave incorrecta.</p>
+            <p id="error-cierre" style="color: #f44336; font-size: 14px; display: none; margin-top: 0;">Clave maestra incorrecta.</p>
             <button class="btn-principal" onclick="ejecutarCierreCaja()">Confirmar Cierre</button>
             <button class="btn-cancelar" onclick="cerrarModalCierre()">Cancelar</button>
         </div>
@@ -313,11 +331,18 @@
 
     <script>
         // ==========================================
-        // CONFIGURACIÓN DE SEGURIDAD
+        // CONFIGURACIÓN DE EMPLEADOS Y SEGURIDAD
         // ==========================================
-        const USUARIO_CAJA = "Admin";
-        const CLAVE_CAJA = "1234";
+        const USUARIOS = {
+            "admin": "1997",
+            "Carolina": "0000",
+            "Daniel": "2203"
+        };
+        
+        const CLAVE_MAESTRA = "1234";
 
+        let usuarioActual = ""; 
+        
         let qrCodeInstance = null;
         let intervaloReinicio = null;
         let tiempoRestante = 180; 
@@ -329,11 +354,21 @@
         // LÓGICA DE LOGIN Y SEGURIDAD
         // ==========================================
         function verificarLogin() {
-            let u = document.getElementById("usuario-input").value;
-            let c = document.getElementById("clave-input").value;
+            let u = document.getElementById("usuario-input").value.trim().toLowerCase();
+            let c = document.getElementById("clave-input").value.trim();
             let error = document.getElementById("error-login");
 
-            if (u === USUARIO_CAJA && c === CLAVE_CAJA) {
+            if (USUARIOS[u] && USUARIOS[u] === c) {
+                usuarioActual = u;
+                document.getElementById("label-cajero").innerText = "Cajero: " + u;
+                
+                // NUEVO: Solo el admin ve el historial
+                if (u === "admin") {
+                    document.getElementById("panel-historial").style.display = "block";
+                } else {
+                    document.getElementById("panel-historial").style.display = "none";
+                }
+                
                 document.getElementById("pantalla-login").style.display = "none";
                 document.getElementById("pantalla-app").style.display = "flex";
                 cargarHistorial();
@@ -344,6 +379,21 @@
             } else {
                 error.style.display = "block";
             }
+        }
+
+        function cerrarSesion() {
+            usuarioActual = "";
+            if (pollingInterval) clearInterval(pollingInterval);
+            
+            document.getElementById("usuario-input").value = "";
+            document.getElementById("clave-input").value = "";
+            document.getElementById("error-login").style.display = "none";
+            
+            // Ocultar historial al salir por precaución
+            document.getElementById("panel-historial").style.display = "none";
+            
+            document.getElementById("pantalla-app").style.display = "none";
+            document.getElementById("pantalla-login").style.display = "flex";
         }
 
         function abrirModalCierre() {
@@ -359,31 +409,15 @@
 
         function ejecutarCierreCaja() {
             let c = document.getElementById("clave-cierre").value;
-            if (c === CLAVE_CAJA) {
-                // CAPTURAR EL TOTAL ANTES DE BORRAR EL HISTORIAL
+            if (c === CLAVE_MAESTRA) {
                 let totalCierre = document.getElementById("total-monto").innerText;
 
-                // 1. Borrar datos del historial
                 localStorage.removeItem('historialAutoservicio');
                 cargarHistorial();
-                
-                // 2. Cerrar el modal
                 cerrarModalCierre();
+                cerrarSesion();
                 
-                // 3. Detener la consulta a la API de Sono
-                if (pollingInterval) clearInterval(pollingInterval);
-                
-                // 4. Limpiar los campos de Login para el siguiente turno
-                document.getElementById("usuario-input").value = "";
-                document.getElementById("clave-input").value = "";
-                document.getElementById("error-login").style.display = "none";
-                
-                // 5. Cambiar a la pantalla inicial
-                document.getElementById("pantalla-app").style.display = "none";
-                document.getElementById("pantalla-login").style.display = "flex";
-                
-                // 6. Alerta de confirmación con el valor total recaudado
-                alert("✅ Cierre de caja exitoso.\n\n💰 Total recaudado: " + totalCierre + "\n\nSesión terminada.");
+                alert("✅ Cierre de caja exitoso.\n\n💰 Total recaudado: " + totalCierre + "\n\nEl sistema ha regresado a la pantalla de inicio.");
             } else {
                 document.getElementById("error-cierre").style.display = "block";
             }
@@ -503,6 +537,7 @@
             historial.push({
                 monto: parseFloat(monto),
                 banco: banco || 'APP',
+                cajero: usuarioActual,
                 hora: fechaActual.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
                 fecha: fechaActual.toLocaleDateString()
             });
@@ -529,7 +564,7 @@
                     let div = document.createElement('div');
                     div.className = 'item-pago';
                     let montoF = new Intl.NumberFormat('es-CO', {style: 'currency', currency: 'COP', maximumFractionDigits: 0}).format(item.monto);
-                    div.innerHTML = `<span>${item.hora} - ${item.banco}</span> <strong>${montoF}</strong>`;
+                    div.innerHTML = `<span>${item.hora} - ${item.banco} <b>(${item.cajero})</b></span> <strong>${montoF}</strong>`;
                     lista.appendChild(div);
                     total += item.monto;
                 });
