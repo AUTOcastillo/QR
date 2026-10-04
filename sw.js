@@ -1,4 +1,4 @@
-const CACHE_NAME = 'qr-castillo-v5';
+const CACHE_NAME = 'qr-castillo-v7';
 const urlsToCache = [
   './',
   './index.html',
@@ -32,6 +32,13 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
+  // 🚀 NUEVO: Ignorar la API de Sono para que siempre se consulte en tiempo real
+  if (event.request.url.includes('api.sono.lat')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  // Comportamiento normal para el resto de los archivos (imágenes, HTML, sonidos)
   event.respondWith(
     caches.match(event.request)
       .then(response => response || fetch(event.request))
