@@ -256,7 +256,7 @@
         </div>
     </div>
 
-    <!-- NUEVO: TARJETA DE HISTORIAL (CUADRE DE CAJA) -->
+    <!-- TARJETA DE HISTORIAL (CUADRE DE CAJA) -->
     <div class="historial-card">
         <h3>📋 Registro del Día</h3>
         <div id="lista-historial"></div>
@@ -269,6 +269,7 @@
         let intervaloReinicio = null;
         let tiempoRestante = 180; 
         let timeoutCierreModal = null; 
+        let montoEsperado = 0; // NUEVO: Control de coincidencia exacta
 
         // Inicializar historial al cargar
         window.addEventListener('DOMContentLoaded', () => {
@@ -318,6 +319,7 @@
         }
 
         function reiniciarPantalla() {
+            montoEsperado = 0; // NUEVO: Se borra el monto esperado al limpiar la pantalla
             if (intervaloReinicio !== null) { clearInterval(intervaloReinicio); intervaloReinicio = null; }
             let input = document.getElementById("montoInput");
             input.value = "";
@@ -340,7 +342,9 @@
             
             if (isNaN(monto) || monto <= 0) { alert("Por favor ingresa un monto válido."); return; }
 
+            montoEsperado = monto; // NUEVO: El sistema memoriza el cobro actual
             inputElement.blur(); 
+            
             let montoFormateado = monto.toFixed(2);
             let longitudMonto = montoFormateado.length.toString().padStart(2, '0');
             let tag54 = "54" + longitudMonto + montoFormateado;
@@ -401,13 +405,11 @@
             lista.innerHTML = '';
             let total = 0;
 
-            // Mostrar únicamente las transacciones del día actual
             let historialHoy = historial.filter(item => item.fecha === fechaHoy);
 
             if (historialHoy.length === 0) {
                 lista.innerHTML = '<p style="text-align:center; color:#666; font-size: 14px;">No hay pagos registrados hoy.</p>';
             } else {
-                // Invertir para mostrar el más reciente arriba
                 historialHoy.slice().reverse().forEach(item => {
                     let div = document.createElement('div');
                     div.className = 'item-pago';
@@ -457,7 +459,7 @@
                 style: 'currency', currency: 'COP', maximumFractionDigits: 0 
             }).format(montoNum);
 
-            // Guardar en el historial local
+            // Se asume que esta función solo se llama si el pago coincidió correctamente
             guardarTransaccion(montoNum, bancoStr);
 
             document.getElementById("pago-monto").innerText = montoFormateado;
@@ -502,7 +504,15 @@
                     } 
                     else if (nuevoId !== ultimoId && data.payments && data.payments.length > 0) {
                         const pago = data.payments[0];
-                        mostrarAlertaPago(pago.amount, pago.bank);
+                        const montoRecibido = parseFloat(pago.amount) || 0;
+
+                        // NUEVO: El sistema valida que el pago coincida con el QR activo
+                        if (montoEsperado > 0 && montoRecibido === montoEsperado) {
+                            mostrarAlertaPago(pago.amount, pago.bank);
+                            montoEsperado = 0; // Se apaga la memoria tras un cobro exitoso
+                        }
+
+                        // Siempre se avanza el ID para evitar procesar la misma transacción descartada
                         ultimoId = nuevoId;
                     }
                 }
