@@ -293,16 +293,16 @@
                 <p id="countdown-text"></p>
             </div>
             
-            <!-- Botón de salir visible para todos los usuarios -->
             <button class="btn-logout" onclick="cerrarSesion()">Cambiar de Cajero (Salir)</button>
         </div>
 
-        <!-- TARJETA DE HISTORIAL (CUADRE DE CAJA) - OCULTA POR DEFECTO -->
+        <!-- TARJETA DE HISTORIAL (CUADRE DE CAJA) -->
         <div id="panel-historial" class="historial-card" style="display: none;">
             <h3>📋 Registro del Día</h3>
             <div id="lista-historial"></div>
             <div class="total-dia">Total: <span id="total-monto">$0</span></div>
-            <button class="btn-limpiar" onclick="abrirModalCierre()">Cerrar Caja (Borrar Historial)</button>
+            <!-- ESTE BOTÓN SOLO LO VERÁ EL ADMIN -->
+            <button id="btn-cerrar-caja" class="btn-limpiar" style="display: none;" onclick="abrirModalCierre()">Cerrar Caja (Borrar Historial)</button>
         </div>
     </div>
 
@@ -334,9 +334,9 @@
         // CONFIGURACIÓN DE EMPLEADOS Y SEGURIDAD
         // ==========================================
         const USUARIOS = {
-            "admin": "1997",
-            "Carolina": "0000",
-            "Daniel": "2203"
+            "admin": "1234",
+            "carolina": "0000",
+            "daniel": "9999"
         };
         
         const CLAVE_MAESTRA = "1234";
@@ -354,19 +354,24 @@
         // LÓGICA DE LOGIN Y SEGURIDAD
         // ==========================================
         function verificarLogin() {
+            // Convierte lo que el usuario escriba a minúsculas para evitar errores
             let u = document.getElementById("usuario-input").value.trim().toLowerCase();
             let c = document.getElementById("clave-input").value.trim();
             let error = document.getElementById("error-login");
 
             if (USUARIOS[u] && USUARIOS[u] === c) {
-                usuarioActual = u;
-                document.getElementById("label-cajero").innerText = "Cajero: " + u;
+                // Pone la primera letra en mayúscula solo para que se vea bonito en la pantalla
+                usuarioActual = u.charAt(0).toUpperCase() + u.slice(1);
+                document.getElementById("label-cajero").innerText = "Cajero: " + usuarioActual;
                 
-                // NUEVO: Solo el admin ve el historial
+                // Todos ven el historial
+                document.getElementById("panel-historial").style.display = "block";
+                
+                // SOLO el admin ve el botón de Cerrar Caja
                 if (u === "admin") {
-                    document.getElementById("panel-historial").style.display = "block";
+                    document.getElementById("btn-cerrar-caja").style.display = "block";
                 } else {
-                    document.getElementById("panel-historial").style.display = "none";
+                    document.getElementById("btn-cerrar-caja").style.display = "none";
                 }
                 
                 document.getElementById("pantalla-login").style.display = "none";
@@ -389,7 +394,6 @@
             document.getElementById("clave-input").value = "";
             document.getElementById("error-login").style.display = "none";
             
-            // Ocultar historial al salir por precaución
             document.getElementById("panel-historial").style.display = "none";
             
             document.getElementById("pantalla-app").style.display = "none";
