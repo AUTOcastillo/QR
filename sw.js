@@ -1,10 +1,13 @@
-const CACHE_NAME = 'qr-castillo-v7';
+const CACHE_NAME = 'qr-castillo-v8'; // 🚀 CAMBIO CLAVE: Subimos a v8 para forzar la descarga del nuevo index.html con las correcciones
 const urlsToCache = [
   './',
   './index.html',
   './manifest.json',
   'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js',
   'https://assets.mixkit.co/active_storage/sfx/861/861-preview.mp3'
+  // Si separaste el JS o CSS en archivos externos, agrégalos aquí. Ejemplo:
+  // './app.js',
+  // './style.css'
 ];
 
 self.addEventListener('install', event => {
@@ -17,7 +20,7 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-  // Borrar los cachés antiguos que no coincidan con la versión actual
+  // Borrar los cachés antiguos que no coincidan con la versión actual (eliminará la v7)
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
@@ -32,7 +35,7 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  // 🚀 NUEVO: Ignorar la API de Sono para que siempre se consulte en tiempo real
+  // Ignorar la API de Sono para que siempre se consulte en tiempo real
   if (event.request.url.includes('api.sono.lat')) {
     event.respondWith(fetch(event.request));
     return;
