@@ -1,4 +1,4 @@
-const CACHE_NAME = 'qr-castillo-v1';
+const CACHE_NAME = 'qr-castillo-v2';
 const urlsToCache = [
   './',
   './index.html',
