@@ -338,7 +338,7 @@
                 document.getElementById("pantalla-app").style.display = "flex";
                 cargarHistorial();
                 revisarPagos();
-                // Si existía un intervalo anterior, lo limpiamos por precaución
+                
                 if (pollingInterval) clearInterval(pollingInterval);
                 pollingInterval = setInterval(revisarPagos, 5000); 
             } else {
@@ -360,6 +360,9 @@
         function ejecutarCierreCaja() {
             let c = document.getElementById("clave-cierre").value;
             if (c === CLAVE_CAJA) {
+                // CAPTURAR EL TOTAL ANTES DE BORRAR EL HISTORIAL
+                let totalCierre = document.getElementById("total-monto").innerText;
+
                 // 1. Borrar datos del historial
                 localStorage.removeItem('historialAutoservicio');
                 cargarHistorial();
@@ -379,7 +382,8 @@
                 document.getElementById("pantalla-app").style.display = "none";
                 document.getElementById("pantalla-login").style.display = "flex";
                 
-                alert("La caja se ha cerrado y reiniciado exitosamente. Sesión terminada.");
+                // 6. Alerta de confirmación con el valor total recaudado
+                alert("✅ Cierre de caja exitoso.\n\n💰 Total recaudado: " + totalCierre + "\n\nSesión terminada.");
             } else {
                 document.getElementById("error-cierre").style.display = "block";
             }
