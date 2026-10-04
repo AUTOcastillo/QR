@@ -75,7 +75,7 @@
         .input-group { margin-bottom: 15px; width: 100%; }
         label { display: block; font-size: 14px; margin-bottom: 10px; color: #ccc; }
 
-        input[type="text"] { 
+        input[type="text"], input[type="password"] { 
             font-size: 32px; 
             padding: 12px; 
             width: 100%; 
@@ -88,12 +88,11 @@
             background-color: #fff;
             transition: font-size 0.2s, border-color 0.3s; 
         }
-        input[type="text"]:focus { 
+        input[type="text"]:focus, input[type="password"]:focus { 
             border-color: var(--color-oro-oscuro); 
             box-shadow: 0 0 12px rgba(217, 184, 92, 0.4);
         } 
         
-        /* ESTILOS BOTONES RÁPIDOS */
         .botones-rapidos { 
             display: flex; 
             gap: 10px; 
@@ -161,18 +160,17 @@
         .reloj-animado { display: inline-block; margin-right: 5px; animation: girarReloj 2s infinite ease-in-out; }
         @keyframes girarReloj { 0%, 20% { transform: rotate(0deg); } 40%, 60% { transform: rotate(180deg); } 80%, 100% { transform: rotate(360deg); } }
 
-        #modal-pago {
+        .modal-overlay {
             display: none; 
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background-color: var(--color-fondo); 
+            background-color: rgba(10, 15, 37, 0.95); 
             z-index: 9999;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             text-align: center;
             padding: 20px;
-            cursor: pointer; 
         }
         .modal-titulo { font-family: "Times New Roman", Times, serif; font-size: 42px; color: var(--color-oro); margin-bottom: 40px; letter-spacing: 2px;}
         .modal-monto { font-size: 72px; font-weight: bold; color: var(--color-texto); margin-bottom: 20px; }
@@ -180,7 +178,6 @@
         .modal-instruccion { font-size: 16px; color: #888; animation: parpadeo 2s infinite;}
         @keyframes parpadeo { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
 
-        /* ESTILOS HISTORIAL DE CAJA */
         .historial-card {
             background: var(--color-tarjeta);
             padding: 20px;
@@ -209,73 +206,188 @@
         }
         .btn-limpiar:hover { background-color: #f44336; color: white; }
 
+        #pantalla-login { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 380px; }
+        #pantalla-app { display: none; flex-direction: column; align-items: center; width: 100%; }
+
+        .modal-box {
+            background: var(--color-tarjeta);
+            padding: 30px;
+            border-radius: 16px;
+            border: 2px solid var(--color-oro);
+            width: 100%;
+            max-width: 320px;
+        }
+        .modal-box input { font-size: 20px; margin-bottom: 15px; }
+        .btn-cancelar {
+            background-color: transparent; color: #888; border: none; font-size: 14px; margin-top: 15px; cursor: pointer; text-decoration: underline;
+        }
     </style>
 </head>
 <body>
 
     <audio id="sonido-pago" src="https://assets.mixkit.co/active_storage/sfx/861/861-preview.mp3" preload="auto"></audio>
 
-    <div id="modal-pago">
+    <!-- =====================================
+         PANTALLA DE LOGIN
+         ===================================== -->
+    <div id="pantalla-login" class="card">
+        <h2>
+            <span class="large-text">INICIAR SESIÓN</span>
+        </h2>
+        <div class="input-group">
+            <input type="text" id="usuario-input" placeholder="Usuario" style="font-size: 20px; margin-bottom: 15px;" onkeypress="if(event.key === 'Enter') verificarLogin()">
+            <input type="password" id="clave-input" placeholder="Contraseña" style="font-size: 20px;" onkeypress="if(event.key === 'Enter') verificarLogin()">
+        </div>
+        <p id="error-login" style="color: #f44336; font-size: 14px; display: none; margin-top: 0;">Credenciales incorrectas.</p>
+        <button class="btn-principal" onclick="verificarLogin()">Entrar</button>
+    </div>
+
+    <!-- =====================================
+         PANTALLA PRINCIPAL (CAJA)
+         ===================================== -->
+    <div id="pantalla-app">
+        <!-- TARJETA PRINCIPAL DE COBRO -->
+        <div class="card">
+            <div class="estado-red">
+                <span class="dot offline" id="red-dot"></span>
+                <span id="red-texto">Conectando...</span>
+            </div>
+
+            <h2>
+                <span class="large-text">AUTOSERVICIO</span>
+                <span class="large-text">CASTILLO</span>
+            </h2>
+            
+            <div class="input-group">
+                <label for="montoInput">Ingresa el valor a cobrar (COP)</label>
+                <input type="text" id="montoInput" inputmode="numeric" placeholder="0" oninput="formatearMoneda(this)" onkeypress="if(event.key === 'Enter') generarQR()">
+            </div>
+
+            <div class="botones-rapidos">
+                <button class="btn-rapido" onclick="cobroRapido(5000)">$5.000</button>
+                <button class="btn-rapido" onclick="cobroRapido(10000)">$10.000</button>
+                <button class="btn-rapido" onclick="cobroRapido(20000)">$20.000</button>
+            </div>
+
+            <button class="btn-principal" onclick="generarQR()">Generar QR</button>
+
+            <div id="qrcode"></div>
+            
+            <div id="status-box" class="info" style="margin-top: 15px;">
+                <p id="payload-output" style="margin: 0;">Esperando monto...</p>
+                <p id="countdown-text"></p>
+            </div>
+        </div>
+
+        <!-- TARJETA DE HISTORIAL (CUADRE DE CAJA) -->
+        <div class="historial-card">
+            <h3>📋 Registro del Día</h3>
+            <div id="lista-historial"></div>
+            <div class="total-dia">Total: <span id="total-monto">$0</span></div>
+            <button class="btn-limpiar" onclick="abrirModalCierre()">Cerrar Caja (Borrar Historial)</button>
+        </div>
+    </div>
+
+    <!-- =====================================
+         MODALES
+         ===================================== -->
+    <!-- Modal Alerta Pago -->
+    <div id="modal-pago" class="modal-overlay" style="cursor: pointer;" onclick="cerrarModalYReiniciar()">
         <div class="modal-titulo">PAGO RECIBIDO</div>
         <div class="modal-monto" id="pago-monto">$0</div>
         <div class="modal-banco" id="pago-banco">BANCO</div>
         <div class="modal-instruccion">Toca la pantalla para continuar</div>
     </div>
 
-    <!-- TARJETA PRINCIPAL DE COBRO -->
-    <div class="card">
-        <div class="estado-red">
-            <span class="dot offline" id="red-dot"></span>
-            <span id="red-texto">Conectando...</span>
+    <!-- Modal Cierre de Caja -->
+    <div id="modal-cierre" class="modal-overlay">
+        <div class="modal-box">
+            <h3 style="color: var(--color-oro); margin-top: 0;">Autorización de Cierre</h3>
+            <p style="font-size: 14px; color: #ccc; margin-bottom: 20px;">Ingresa la clave maestra para cerrar la caja y reiniciar los valores a cero.</p>
+            <input type="password" id="clave-cierre" placeholder="Contraseña" style="width: 100%; text-align: center;" onkeypress="if(event.key === 'Enter') ejecutarCierreCaja()">
+            <p id="error-cierre" style="color: #f44336; font-size: 14px; display: none; margin-top: 0;">Clave incorrecta.</p>
+            <button class="btn-principal" onclick="ejecutarCierreCaja()">Confirmar Cierre</button>
+            <button class="btn-cancelar" onclick="cerrarModalCierre()">Cancelar</button>
         </div>
-
-        <h2>
-            <span class="large-text">AUTOSERVICIO</span>
-            <span class="large-text">CASTILLO</span>
-        </h2>
-        
-        <div class="input-group">
-            <label for="montoInput">Ingresa el valor a cobrar (COP)</label>
-            <input type="text" id="montoInput" inputmode="numeric" placeholder="0" oninput="formatearMoneda(this)" onkeypress="if(event.key === 'Enter') generarQR()">
-        </div>
-
-        <!-- BOTONES RÁPIDOS -->
-        <div class="botones-rapidos">
-            <button class="btn-rapido" onclick="cobroRapido(5000)">$5.000</button>
-            <button class="btn-rapido" onclick="cobroRapido(10000)">$10.000</button>
-            <button class="btn-rapido" onclick="cobroRapido(20000)">$20.000</button>
-        </div>
-
-        <button class="btn-principal" onclick="generarQR()">Generar QR</button>
-
-        <div id="qrcode"></div>
-        
-        <div id="status-box" class="info" style="margin-top: 15px;">
-            <p id="payload-output" style="margin: 0;">Esperando monto...</p>
-            <p id="countdown-text"></p>
-        </div>
-    </div>
-
-    <!-- TARJETA DE HISTORIAL (CUADRE DE CAJA) -->
-    <div class="historial-card">
-        <h3>📋 Registro del Día</h3>
-        <div id="lista-historial"></div>
-        <div class="total-dia">Total: <span id="total-monto">$0</span></div>
-        <button class="btn-limpiar" onclick="limpiarHistorial()">Cerrar Caja (Borrar Historial)</button>
     </div>
 
     <script>
+        // ==========================================
+        // CONFIGURACIÓN DE SEGURIDAD
+        // ==========================================
+        const USUARIO_CAJA = "admin";
+        const CLAVE_CAJA = "1234";
+
         let qrCodeInstance = null;
         let intervaloReinicio = null;
         let tiempoRestante = 180; 
         let timeoutCierreModal = null; 
-        let montoEsperado = 0; // NUEVO: Control de coincidencia exacta
+        let montoEsperado = 0; 
+        let pollingInterval = null;
 
-        // Inicializar historial al cargar
-        window.addEventListener('DOMContentLoaded', () => {
-            cargarHistorial();
-        });
+        // ==========================================
+        // LÓGICA DE LOGIN Y SEGURIDAD
+        // ==========================================
+        function verificarLogin() {
+            let u = document.getElementById("usuario-input").value;
+            let c = document.getElementById("clave-input").value;
+            let error = document.getElementById("error-login");
 
+            if (u === USUARIO_CAJA && c === CLAVE_CAJA) {
+                document.getElementById("pantalla-login").style.display = "none";
+                document.getElementById("pantalla-app").style.display = "flex";
+                cargarHistorial();
+                revisarPagos();
+                // Si existía un intervalo anterior, lo limpiamos por precaución
+                if (pollingInterval) clearInterval(pollingInterval);
+                pollingInterval = setInterval(revisarPagos, 5000); 
+            } else {
+                error.style.display = "block";
+            }
+        }
+
+        function abrirModalCierre() {
+            document.getElementById("modal-cierre").style.display = "flex";
+            document.getElementById("clave-cierre").value = "";
+            document.getElementById("error-cierre").style.display = "none";
+            document.getElementById("clave-cierre").focus();
+        }
+
+        function cerrarModalCierre() {
+            document.getElementById("modal-cierre").style.display = "none";
+        }
+
+        function ejecutarCierreCaja() {
+            let c = document.getElementById("clave-cierre").value;
+            if (c === CLAVE_CAJA) {
+                // 1. Borrar datos del historial
+                localStorage.removeItem('historialAutoservicio');
+                cargarHistorial();
+                
+                // 2. Cerrar el modal
+                cerrarModalCierre();
+                
+                // 3. Detener la consulta a la API de Sono
+                if (pollingInterval) clearInterval(pollingInterval);
+                
+                // 4. Limpiar los campos de Login para el siguiente turno
+                document.getElementById("usuario-input").value = "";
+                document.getElementById("clave-input").value = "";
+                document.getElementById("error-login").style.display = "none";
+                
+                // 5. Cambiar a la pantalla inicial
+                document.getElementById("pantalla-app").style.display = "none";
+                document.getElementById("pantalla-login").style.display = "flex";
+                
+                alert("La caja se ha cerrado y reiniciado exitosamente. Sesión terminada.");
+            } else {
+                document.getElementById("error-cierre").style.display = "block";
+            }
+        }
+
+        // ==========================================
+        // LÓGICA DEL QR Y COBROS
+        // ==========================================
         function formatearMoneda(input) {
             let valorLimpio = input.value.replace(/\D/g, "");
             if (valorLimpio === "") { 
@@ -290,7 +402,6 @@
             else input.style.fontSize = "32px";
         }
 
-        // LÓGICA DE BOTONES RÁPIDOS
         function cobroRapido(valor) {
             let input = document.getElementById("montoInput");
             input.value = valor.toString();
@@ -319,7 +430,7 @@
         }
 
         function reiniciarPantalla() {
-            montoEsperado = 0; // NUEVO: Se borra el monto esperado al limpiar la pantalla
+            montoEsperado = 0; 
             if (intervaloReinicio !== null) { clearInterval(intervaloReinicio); intervaloReinicio = null; }
             let input = document.getElementById("montoInput");
             input.value = "";
@@ -342,7 +453,7 @@
             
             if (isNaN(monto) || monto <= 0) { alert("Por favor ingresa un monto válido."); return; }
 
-            montoEsperado = monto; // NUEVO: El sistema memoriza el cobro actual
+            montoEsperado = monto; 
             inputElement.blur(); 
             
             let montoFormateado = monto.toFixed(2);
@@ -378,9 +489,9 @@
             }, 1000);
         }
 
-        /* ==========================================
-           LÓGICA DEL HISTORIAL DE CAJA
-           ========================================== */
+        // ==========================================
+        // LÓGICA DEL HISTORIAL DE CAJA
+        // ==========================================
         function guardarTransaccion(monto, banco) {
             let historial = JSON.parse(localStorage.getItem('historialAutoservicio')) || [];
             let fechaActual = new Date();
@@ -423,16 +534,9 @@
             totalDiv.innerText = new Intl.NumberFormat('es-CO', {style: 'currency', currency: 'COP', maximumFractionDigits: 0}).format(total);
         }
 
-        function limpiarHistorial() {
-            if(confirm("¿Estás seguro de que deseas cerrar la caja? Esto borrará el registro de pagos en pantalla.")) {
-                localStorage.removeItem('historialAutoservicio');
-                cargarHistorial();
-            }
-        }
-
-        /* ==========================================
-           LÓGICA DEL PANEL DE PAGOS (API SONO)
-           ========================================== */
+        // ==========================================
+        // LÓGICA DEL PANEL DE PAGOS (API SONO)
+        // ==========================================
         const API_URL = 'https://api.sono.lat/libreta/cad178eee9a7f636f78c96b09ef8314d';
         let ultimoId = 0;
 
@@ -459,7 +563,6 @@
                 style: 'currency', currency: 'COP', maximumFractionDigits: 0 
             }).format(montoNum);
 
-            // Se asume que esta función solo se llama si el pago coincidió correctamente
             guardarTransaccion(montoNum, bancoStr);
 
             document.getElementById("pago-monto").innerText = montoFormateado;
@@ -467,7 +570,6 @@
             
             let modal = document.getElementById("modal-pago");
             modal.style.display = "flex";
-            modal.onclick = cerrarModalYReiniciar;
 
             const sonido = document.getElementById('sonido-pago');
             sonido.currentTime = 0; 
@@ -506,13 +608,10 @@
                         const pago = data.payments[0];
                         const montoRecibido = parseFloat(pago.amount) || 0;
 
-                        // NUEVO: El sistema valida que el pago coincida con el QR activo
                         if (montoEsperado > 0 && montoRecibido === montoEsperado) {
                             mostrarAlertaPago(pago.amount, pago.bank);
-                            montoEsperado = 0; // Se apaga la memoria tras un cobro exitoso
+                            montoEsperado = 0; 
                         }
-
-                        // Siempre se avanza el ID para evitar procesar la misma transacción descartada
                         ultimoId = nuevoId;
                     }
                 }
@@ -521,9 +620,6 @@
                 actualizarEstadoRed(false);
             }
         }
-
-        revisarPagos();
-        setInterval(revisarPagos, 5000);
 
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
